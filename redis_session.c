@@ -637,7 +637,7 @@ PS_VALIDATE_SID_FUNC(redis)
         return FAILURE;
     }
 
-    if (response_len == 2 && response[0] == ':' && response[1] == '1') {
+    if (response_len == 2 && response[0] == ':') {
         efree(response);
         return SUCCESS;
     } else {
