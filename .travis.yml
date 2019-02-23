@@ -47,6 +47,7 @@ before_script:
   - for PORT in $(seq 26379 26380); do wget download.redis.io/redis-stable/sentinel.conf -O $PORT.conf; redis-server $PORT.conf --port $PORT --daemonize yes --sentinel; done
   - echo yes | redis-cli --cluster create $(seq -f 127.0.0.1:%g 7000 7011) --cluster-replicas 3
   - echo 'extension = redis.so' >> ~/.phpenv/versions/$(phpenv version-name)/etc/php.ini
+  - echo 'redis.pconnect.pooling_enabled = 1' >> ~/.phpenv/versions/$(phpenv version-name)/etc/php.ini
 script:
   - php tests/TestRedis.php --class Redis
   - php tests/TestRedis.php --class RedisArray
