@@ -11,7 +11,7 @@
 
 RedisArray *ra_load_array(const char *name);
 RedisArray *ra_make_array(HashTable *hosts, zval *z_fun, zval *z_dist, HashTable *hosts_prev, zend_bool b_index, zend_bool b_pconnect, long retry_interval, zend_bool b_lazy_connect, double connect_timeout, double read_timeout, zend_bool consistent, zend_string *algorithm, zend_string *auth);
-zval *ra_find_node_by_name(RedisArray *ra, const char *host, int host_len);
+zval *ra_find_node_by_name(RedisArray *ra, zend_string *host);
 zval *ra_find_node(RedisArray *ra, const char *key, int key_len, int *out_pos);
 void ra_init_function_table(RedisArray *ra);
 
