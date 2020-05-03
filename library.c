@@ -1819,27 +1819,49 @@ redis_sock_check_liveness(RedisSock *redis_sock)
 
     if (redis_sock_write(redis_sock, cmd.c, cmd.len) < 0) {
         smart_string_free(&cmd);
-        return FAILURE;
+        goto failure;
     }
     smart_string_free(&cmd);
 
     if (redis_sock_gets(redis_sock, inbuf, sizeof(inbuf) - 1, &len) < 0) {
-        return FAILURE;
+        goto failure;
     } else if (redis_sock->auth) {
-        if (strncmp(inbuf, "+OK", 3) != 0) {
-            return FAILURE;
-        } else if (redis_sock_gets(redis_sock, inbuf, sizeof(inbuf) - 1, &len) < 0) {
-            return FAILURE;
+        if (strncmp(inbuf, "+OK", 3) == 0 || strncmp(inbuf, "-ERR Client sent AUTH", 21)) {
+            /* successfully authenticated or authentication isn't required */
+            if (redis_sock_gets(redis_sock, inbuf, sizeof(inbuf) - 1, &len) < 0) {
+                goto failure;
+            }
+        } else if (strncmp(inbuf, "-NOAUTH", 7) == 0) {
+            /* connection is fine but authentication failed, next commant must fails too */
+            if (redis_sock_gets(redis_sock, inbuf, sizeof(inbuf) - 1, &len) < 0 || strncmp(inbuf, "-NOAUTH", 7) != 0) {
+                goto failure;
+            }
+            redis_sock->status = REDIS_SOCK_STATUS_CONNECTED;
+            return SUCCESS;
+        } else {
+            goto failure;
         }
+    } else if (strncmp(inbuf, "-NOAUTH", 7) == 0) {
+        /* connection is fine but authentication failed */
+        redis_sock->status = REDIS_SOCK_STATUS_CONNECTED;
+        return SUCCESS;
     }
     if (*inbuf != TYPE_BULK ||
         atoi(inbuf + 1) != uniqid_len ||
         redis_sock_gets(redis_sock, inbuf, sizeof(inbuf) - 1, &len) < 0 ||
         strncmp(inbuf, uniqid, uniqid_len) != 0
     ) {
-        return FAILURE;
+        goto failure;
     }
+    redis_sock->status = REDIS_SOCK_STATUS_READY;
     return SUCCESS;
+failure:
+    redis_sock->status = REDIS_SOCK_STATUS_FAILED;
+    if (redis_sock->stream) {
+        php_stream_pclose(redis_sock->stream);
+        redis_sock->stream = NULL;
+    }
+    return FAILURE;
 }
 
 /**
@@ -1889,11 +1911,7 @@ PHP_REDIS_API int redis_sock_connect(RedisSock *redis_sock)
                 zend_llist_remove_tail(&p->list);
 
                 if (redis_sock_check_liveness(redis_sock) == SUCCESS) {
-                    redis_sock->status = REDIS_SOCK_STATUS_READY;
                     return SUCCESS;
-                } else if (redis_sock->stream) {
-                    php_stream_pclose(redis_sock->stream);
-                    redis_sock->stream = NULL;
                 }
                 p->nb_active--;
             }
