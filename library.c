@@ -115,17 +115,46 @@ static int reselect_db(RedisSock *redis_sock) {
 PHP_REDIS_API int
 redis_sock_auth(RedisSock *redis_sock)
 {
-    char *cmd, *response;
+    char *cmd, *response, *auth, pass[] = "", dem[] = ":";
     int cmd_len, response_len;
 
-    cmd_len = redis_spprintf(redis_sock, NULL, &cmd, "AUTH", "S", redis_sock->auth);
+    // Convert zend_string to char*
+	auth = ZSTR_VAL(redis_sock->auth);
+
+	// Split auth by delimiter
+	char *creds = strtok(auth, dem);
+
+	// Assign the first value to the user
+	char *user = creds;
+
+	// Continue to iterate through the split char and cat to pass to form password
+	while(creds != NULL) {
+		creds = strtok(NULL, dem);
+		if (creds != NULL) {
+			 strcat(pass, creds);
+		}
+	}
+
+	// If password is empty, meaning that the auth is only the password.
+	if (strlen(pass) == 0) {
+		cmd_len = redis_spprintf(redis_sock, NULL, &cmd, "AUTH", "S", redis_sock->auth);
+	} else {
+		// Form AUTH command with username and password
+		cmd_len = redis_spprintf(redis_sock, NULL, &cmd, "AUTH", "ss", user, strlen(user), pass, strlen(pass));
+	}
 
     if (redis_sock_write(redis_sock, cmd, cmd_len) < 0) {
         efree(cmd);
+		efree(auth);
+		efree(user);
+		efree(creds);
         return -1;
     }
 
     efree(cmd);
+    efree(auth);
+    efree(user);
+    efree(creds);
 
     response = redis_sock_read(redis_sock, &response_len);
     if (response == NULL) {
