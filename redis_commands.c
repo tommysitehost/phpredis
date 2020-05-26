@@ -63,6 +63,9 @@ typedef struct geoOptions {
 #define REDIS_CMD_SPPRINTF(ret, kw, fmt, ...) \
     redis_spprintf(redis_sock, slot, ret, kw, fmt, ##__VA_ARGS__)
 
+/* Max length of the path */
+#define MAX_PATH_LEN 256
+
 /* Generic commands based on method signature and what kind of things we're
  * processing.  Lots of Redis commands take something like key, value, or
  * key, value long.  Each unique signature like this is written only once */
@@ -2037,7 +2040,7 @@ int redis_pfcount_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
 int redis_auth_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
                    char **cmd, int *cmd_len, short *slot, void **ctx)
 {
-    char *pw, *creds, *user, dem[] = ":", pass[] = "";
+    char *pw, *creds, *user, pass[MAX_PATH_LEN], dem[1] = ":";
     size_t pw_len;
 
     if (zend_parse_parameters(ZEND_NUM_ARGS(), "s", &pw, &pw_len)
@@ -2052,11 +2055,15 @@ int redis_auth_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
 	// Assign the first value to the user
 	user = creds;
 
+	// Zero fill pass
+	memset(pass, '\0', sizeof(pass));
+
 	// Continue to iterate through the split char and cat to pass to form password
 	while(creds != NULL) {
 		creds = strtok(NULL, dem);
 		if (creds != NULL) {
-			 strcat(pass, creds);
+			// copy the creds into pass
+			 strncpy(pass, creds, MAX_PATH_LEN);
 		}
 	}
 

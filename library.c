@@ -45,6 +45,8 @@
 #define SCORE_DECODE_INT  1
 #define SCORE_DECODE_DOUBLE 2
 
+#define MAX_PATH_LEN 256
+
 #ifndef PHP_WIN32
     #include <netinet/tcp.h> /* TCP_NODELAY */
     #include <sys/socket.h>  /* SO_KEEPALIVE */
@@ -115,7 +117,7 @@ static int reselect_db(RedisSock *redis_sock) {
 PHP_REDIS_API int
 redis_sock_auth(RedisSock *redis_sock)
 {
-    char *cmd, *response, *auth, pass[] = "", dem[] = ":";
+    char *cmd, *response, *auth, pass[MAX_PATH_LEN] = "", dem[1] = ":";
     int cmd_len, response_len;
 
     // Convert zend_string to char*
@@ -127,11 +129,15 @@ redis_sock_auth(RedisSock *redis_sock)
 	// Assign the first value to the user
 	char *user = creds;
 
+	// Zero fill pass
+	memset(pass, '\0', sizeof(pass));
+
 	// Continue to iterate through the split char and cat to pass to form password
 	while(creds != NULL) {
 		creds = strtok(NULL, dem);
 		if (creds != NULL) {
-			 strcat(pass, creds);
+			// copy the creds into pass
+			strncpy(pass, creds, MAX_PATH_LEN);
 		}
 	}
 
@@ -145,16 +151,10 @@ redis_sock_auth(RedisSock *redis_sock)
 
     if (redis_sock_write(redis_sock, cmd, cmd_len) < 0) {
         efree(cmd);
-		efree(auth);
-		efree(user);
-		efree(creds);
         return -1;
     }
 
     efree(cmd);
-    efree(auth);
-    efree(user);
-    efree(creds);
 
     response = redis_sock_read(redis_sock, &response_len);
     if (response == NULL) {
