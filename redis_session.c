@@ -540,7 +540,7 @@ redis_session_key(RedisSock *redis_sock, const char *key, int key_len)
 
     if (redis_sock->prefix) {
         prefix = ZSTR_VAL(redis_sock->prefix);
-        prefix_len = ZSTR_LEN(redis_sock->prefix);
+        prefix_len = strlen(prefix);
     }
 
     /* build session key */
