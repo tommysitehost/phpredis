@@ -117,14 +117,14 @@ static int reselect_db(RedisSock *redis_sock) {
 PHP_REDIS_API int
 redis_sock_auth(RedisSock *redis_sock)
 {
-    char *cmd, *response, *auth, pass[MAX_PATH_LEN] = "", dem[1] = ":";
+    char *cmd, *response, *auth, pass[MAX_PATH_LEN] = "";
     int cmd_len, response_len;
 
     // Convert zend_string to char*
 	auth = ZSTR_VAL(redis_sock->auth);
 
 	// Split auth by delimiter
-	char *creds = strtok(auth, dem);
+	char *creds = strtok(auth, ":");
 
 	// Assign the first value to the user
 	char *user = creds;
@@ -134,7 +134,7 @@ redis_sock_auth(RedisSock *redis_sock)
 
 	// Continue to iterate through the split char and cat to pass to form password
 	while(creds != NULL) {
-		creds = strtok(NULL, dem);
+		creds = strtok(NULL, ":");
 		if (creds != NULL) {
 			// copy the creds into pass
 			strncpy(pass, creds, MAX_PATH_LEN);

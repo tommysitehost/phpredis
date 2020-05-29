@@ -2040,7 +2040,7 @@ int redis_pfcount_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
 int redis_auth_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
                    char **cmd, int *cmd_len, short *slot, void **ctx)
 {
-    char *pw, *creds, *user, pass[MAX_PATH_LEN], dem[1] = ":";
+    char *pw, *creds, *user, pass[MAX_PATH_LEN];
     size_t pw_len;
 
     if (zend_parse_parameters(ZEND_NUM_ARGS(), "s", &pw, &pw_len)
@@ -2050,7 +2050,7 @@ int redis_auth_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
     }
 
 	// Split auth by delimiter
-	creds = strtok(pw, dem);
+	creds = strtok(pw, ":");
 
 	// Assign the first value to the user
 	user = creds;
@@ -2060,7 +2060,7 @@ int redis_auth_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
 
 	// Continue to iterate through the split char and cat to pass to form password
 	while(creds != NULL) {
-		creds = strtok(NULL, dem);
+		creds = strtok(NULL, ":");
 		if (creds != NULL) {
 			// copy the creds into pass
 			 strncpy(pass, creds, MAX_PATH_LEN);
