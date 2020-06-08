@@ -121,33 +121,33 @@ redis_sock_auth(RedisSock *redis_sock)
     int cmd_len, response_len;
 
     // Convert zend_string to char*
-	auth = ZSTR_VAL(redis_sock->auth);
+    auth = ZSTR_VAL(redis_sock->auth);
 
-	// Split auth by delimiter
-	char *creds = strtok(auth, ":");
+    // Split auth by delimiter
+    char *creds = strtok(auth, ":");
 
-	// Assign the first value to the user
-	char *user = creds;
+    // Assign the first value to the user
+    char *user = creds;
 
-	// Zero fill pass
-	memset(pass, '\0', sizeof(pass));
+    // Zero fill pass
+    memset(pass, '\0', sizeof(pass));
 
-	// Continue to iterate through the split char and cat to pass to form password
-	while(creds != NULL) {
-		creds = strtok(NULL, ":");
-		if (creds != NULL) {
-			// copy the creds into pass
-			strncpy(pass, creds, MAX_PATH_LEN);
-		}
-	}
+    // Continue to iterate through the split char and cat to pass to form password
+    while(creds != NULL) {
+        creds = strtok(NULL, ":");
+        if (creds != NULL) {
+            // copy the creds into pass
+            strncpy(pass, creds, MAX_PATH_LEN);
+        }
+    }
 
-	// If password is empty, meaning that the auth is only the password.
-	if (strlen(pass) == 0) {
-		cmd_len = redis_spprintf(redis_sock, NULL, &cmd, "AUTH", "S", redis_sock->auth);
-	} else {
-		// Form AUTH command with username and password
-		cmd_len = redis_spprintf(redis_sock, NULL, &cmd, "AUTH", "ss", user, strlen(user), pass, strlen(pass));
-	}
+    // If password is empty, meaning that the auth is only the password.
+    if (strlen(pass) == 0) {
+        cmd_len = redis_spprintf(redis_sock, NULL, &cmd, "AUTH", "S", redis_sock->auth);
+    } else {
+        // Form AUTH command with username and password
+        cmd_len = redis_spprintf(redis_sock, NULL, &cmd, "AUTH", "ss", user, strlen(user), pass, strlen(pass));
+    }
 
     if (redis_sock_write(redis_sock, cmd, cmd_len) < 0) {
         efree(cmd);
