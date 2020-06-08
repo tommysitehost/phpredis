@@ -2040,7 +2040,7 @@ int redis_pfcount_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
 int redis_auth_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
                    char **cmd, int *cmd_len, short *slot, void **ctx)
 {
-    char *pw, *creds, *user, pass[MAX_PATH_LEN];
+    char *pw, *pos, pass[MAX_PATH_LEN], user[MAX_PATH_LEN];
     size_t pw_len;
 
     if (zend_parse_parameters(ZEND_NUM_ARGS(), "s", &pw, &pw_len)
@@ -2049,31 +2049,25 @@ int redis_auth_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
         return FAILURE;
     }
 
-    // Split auth by delimiter
-    creds = strtok(pw, ":");
+    // Get a pointer to the first colon character in the auth
+    pos = strstr(pw, ":");
 
-    // Assign the first value to the user
-    user = creds;
+    // If pos is not null, there is a colon in the auth
+    if (pos != NULL) {
+        // Get the position of the colon
+        int position = pos - pw;
 
-    // Zero fill pass
-    memset(pass, '\0', sizeof(pass));
+        // Get the username from the auth
+        strncpy(user, pw, position);
 
-    // Continue to iterate through the split char and cat to pass to form password
-    while(creds != NULL) {
-        creds = strtok(NULL, ":");
-        if (creds != NULL) {
-            // copy the creds into pass
-             strncpy(pass, creds, MAX_PATH_LEN);
-        }
-    }
+        // Get the password from the auth
+        strncpy(pass, pw + position + 1, strlen(pw));
 
-    // If password is empty, meaning that the auth is only the password.
-    if (strlen(pass) == 0) {
-        // Construct our AUTH command with only password
-        *cmd_len = REDIS_CMD_SPPRINTF(cmd, "AUTH", "s", pw, pw_len);
-    } else {
         // Form AUTH command with username and password
         *cmd_len = REDIS_CMD_SPPRINTF(cmd, "AUTH", "ss", user, strlen(user), pass, strlen(pass));
+    } else {
+        // Construct our AUTH command with only password
+        *cmd_len = REDIS_CMD_SPPRINTF(cmd, "AUTH", "s", pw, pw_len);
     }
 
     // Free previously allocated password, and update

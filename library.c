@@ -117,36 +117,30 @@ static int reselect_db(RedisSock *redis_sock) {
 PHP_REDIS_API int
 redis_sock_auth(RedisSock *redis_sock)
 {
-    char *cmd, *response, *auth, pass[MAX_PATH_LEN] = "";
+    char *cmd, *response, *auth, *pos, pass[MAX_PATH_LEN], user[MAX_PATH_LEN];
     int cmd_len, response_len;
 
     // Convert zend_string to char*
     auth = ZSTR_VAL(redis_sock->auth);
 
-    // Split auth by delimiter
-    char *creds = strtok(auth, ":");
+    // Get a pointer to the first colon character in the auth
+    pos = strstr(auth, ":");
 
-    // Assign the first value to the user
-    char *user = creds;
+    // If pos is not null, there is a colon in the auth
+    if (pos != NULL) {
+        // Get the position of the colon
+        int position = pos - auth;
 
-    // Zero fill pass
-    memset(pass, '\0', sizeof(pass));
+        // Get the username from the auth
+        strncpy(user, auth, position);
 
-    // Continue to iterate through the split char and cat to pass to form password
-    while(creds != NULL) {
-        creds = strtok(NULL, ":");
-        if (creds != NULL) {
-            // copy the creds into pass
-            strncpy(pass, creds, MAX_PATH_LEN);
-        }
-    }
+        // Get the password from the auth
+        strncpy(pass, auth + position + 1, strlen(auth));
 
-    // If password is empty, meaning that the auth is only the password.
-    if (strlen(pass) == 0) {
-        cmd_len = redis_spprintf(redis_sock, NULL, &cmd, "AUTH", "S", redis_sock->auth);
-    } else {
         // Form AUTH command with username and password
         cmd_len = redis_spprintf(redis_sock, NULL, &cmd, "AUTH", "ss", user, strlen(user), pass, strlen(pass));
+    } else {
+        cmd_len = redis_spprintf(redis_sock, NULL, &cmd, "AUTH", "S", redis_sock->auth);
     }
 
     if (redis_sock_write(redis_sock, cmd, cmd_len) < 0) {
